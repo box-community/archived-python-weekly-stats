@@ -1,0 +1,53 @@
+#!/bin/sh
+
+# Copyright 2015 Kris Steinhoff, The University of Michigan
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License. 
+
+
+archive_dir="/your/archive/dir"
+box_utils_dir="/usr/local/box_utils"
+deliver_report_to="yourlistserv@domain.edu"
+deliver_report_from="yourlistserv@udomain.edu"
+
+cd $archive_dir
+archive_file="box_prod_users_data_`date +%Y-%m-%d`.csv"
+if [ -f ${archive_file} ]; then
+    echo "${archive_file} already exists. Perhaps this script is already running?" >&2
+    exit 1
+fi
+
+if [ -f "${archive_file}.gz" ]; then
+    echo "${archive_file}.gz already exists. Don't need to refetch data, running report." >&2
+    data_cat_cmd="zcat ${archive_file}.gz"
+    data_compress_cmd=""
+else
+    python "${box_utils_dir}/fetch_user_data.py" -f "${archive_file}" 1> /dev/null; rc=$?
+    if [ $rc -ne 0 ]; then
+        echo "ERROR fetching data failed. Not sending report." >&2
+        exit 1
+    fi
+
+    data_cat_cmd="cat ${archive_file}"
+    data_compress_cmd="gzip ${archive_file}"
+fi
+
+REPORT=`mktemp -t box_usage_report.XXXXXX`
+$data_cat_cmd | python "${box_utils_dir}/user_report.py" > $REPORT
+echo -ne "Date: `date`\nFrom: ${deliver_report_from}\nTo: ${deliver_report_to}\nSubject: Box User Report `date +%Y-%m-%d`\n\n" | cat - ${REPORT} | sendmail -oi -t
+
+$data_compress_cmd
+rm $REPORT
+
+python "${box_utils_dir}/upload_file.py" 1366788356 "${archive_file}.gz" 1> /dev/null
+zcat "${archive_file}.gz" | python "${box_utils_dir}/add_shared_to_group.py" 1> /dev/null
