@@ -49,5 +49,5 @@ echo -ne "Date: `date`\nFrom: ${deliver_report_from}\nTo: ${deliver_report_to}\n
 $data_compress_cmd
 rm $REPORT
 
-python "${box_utils_dir}/upload_file.py" 1366788356 "${archive_file}.gz" 1> /dev/null
+python "${box_utils_dir}/upload_file.py" BOX_FOLDER_NUMBER_GOES_HERE "${archive_file}.gz" 1> /dev/null
 zcat "${archive_file}.gz" | python "${box_utils_dir}/add_shared_to_group.py" 1> /dev/null
