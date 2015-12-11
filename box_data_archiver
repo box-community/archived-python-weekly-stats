@@ -44,7 +44,7 @@ fi
 
 REPORT=`mktemp -t box_usage_report.XXXXXX`
 $data_cat_cmd | python "${box_utils_dir}/user_report.py" > $REPORT
-echo -ne "Date: `date`\nFrom: ${deliver_report_from}\nTo: ${deliver_report_to}\nSubject: Box User Report `date +%Y-%m-%d`\n\n" | cat - ${REPORT} | sendmail -oi -t
+echo -ne "Date: `date -R`\nFrom: ${deliver_report_from}\nTo: ${deliver_report_to}\nSubject: Box User Report `date +%Y-%m-%d`\n\n" | cat - ${REPORT} | sendmail -oi -t
 
 $data_compress_cmd
 rm $REPORT
