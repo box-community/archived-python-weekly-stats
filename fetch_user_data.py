@@ -1,18 +1,3 @@
-""" Copyright 2015 Kris Steinhoff, The University of Michigan
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. 
-"""
-
 import box, ConfigParser, csv, json, ldap, logging, optparse, os, requests, sys, time
 
 class LdapLookup(object):
@@ -42,7 +27,7 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
 
-    logging.basicConfig()
+    logging.basicConfig(filename='/var/log/archive/box/user_list/fetch_user_data.log', filemode='w')
     logger = logging.getLogger("box.fetch_user_data")
     logger.setLevel(logging.WARN - int(options.verbosity) * 10)
 
@@ -82,7 +67,18 @@ if __name__ == "__main__":
     storage_list = []
 
     while True:
-        get_box_users = box.request("GET", "/users", params=box_params)
+        
+        for i in range(6):
+            if i != 0:
+	        time.sleep(2**i)
+            try:
+                #request users
+                get_box_users = box.request("GET", "/users", params=box_params)
+                break
+            except:
+                #re-initialize box object with current auth token 
+                box = box.BoxApi()
+        
         if get_box_users.status_code != requests.codes.ok:
             logger.warn("Response code \"%d \"from \"%s\"\n" % (get_box_users.status_code, get_box_users.url))
         body = get_box_users.text
@@ -106,7 +102,15 @@ if __name__ == "__main__":
 		attrs.append(box_user[key])
                 #print "\t  BOX {key}: {val}".format(key=key, val=user[key])
 
-            local_user = lookup.user_info(username, local_attrs)
+            for i in range(6):
+		if i != 0:
+		    time.sleep(2**i)
+                try:
+                    local_user = lookup.user_info(username, local_attrs)
+                    break
+                except ldap.SERVER_DOWN:
+                    pass 
+
             for key in local_attrs:
                 attrs.append(local_user[key])
                 #print "\tMCOMM {key}: {val}".format(key=key, val=local_results[key])
